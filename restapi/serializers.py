@@ -1,6 +1,9 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import ValidationError
 from django.contrib.auth.models import User
+from logging import logger
+basicConfig(filename='logfile2.log',level = DEBUG , style= '{', format = "{name} || {asctime} || {message}")
+logger = getLogger(__name__)
 
 from restapi.models import Category, Groups, UserExpense, Expenses
 
@@ -8,6 +11,7 @@ from restapi.models import Category, Groups, UserExpense, Expenses
 class UserSerializer(ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
+        logger.info("an user is created")
         return user
 
     class Meta(object):
@@ -44,6 +48,7 @@ class ExpensesSerializer(ModelSerializer):
     def create(self, validated_data):
         expense_users = validated_data.pop('users')
         expense = Expenses.objects.create(**validated_data)
+        logger.info("an expense is creted")
         for eu in expense_users:
             UserExpense.objects.create(expense=expense, **eu)
         return expense
@@ -55,6 +60,8 @@ class ExpensesSerializer(ModelSerializer):
         instance.group = validated_data.get('group', None)
         instance.total_amount = validated_data['total_amount']
 
+        logger.info("expense is updated successfully")
+
         if user_expenses:
             instance.users.all().delete()
             UserExpense.objects.bulk_create(
@@ -63,13 +70,20 @@ class ExpensesSerializer(ModelSerializer):
                     for user_expense in user_expenses
                 ],
             )
-        instance.save()
+        try:
+            instance.save()
+            logger.info("expense is updated successfully")
+
+        except:
+            logger.error("there is an error while updating expense :"+ str(instance.pk) )
+
         return instance
 
     def validate(self, attrs):
         # user = self.context['request'].user
         user_ids = [user['user'].id for user in attrs['users']]
         if len(set(user_ids)) != len(user_ids):
+            logger.error("Single user appears multiple times")
             raise ValidationError('Single user appears multiple times')
 
         # if data.get('group', None) is not None:
