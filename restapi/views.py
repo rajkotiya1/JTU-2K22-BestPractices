@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 import urllib.request
 from datetime import datetime
-
+from logging import info, error,getLogger,warning
+basicConfig(filename='logfile2.log',level = DEBUG , style= '{', format = "{name} || {asctime} || {message}")
+logger = getLogger(__name__)
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 
@@ -28,6 +30,7 @@ def index(_request):
 
 @api_view(['POST'])
 def logout(request):
+    logger.info("logout user :"+ str(request.user) ) 
     """ this function will delete authentication token and return response with HTTP204_no_content  """
 
     request.user.auth_token.delete()
@@ -37,8 +40,10 @@ def logout(request):
 @api_view(['GET'])
 def balance(request):
     """ this function will return final balance of user with HTTP response"""
-
+    start = int(time.time() * 1000.0)
+    logger.info("calculating balance of user:" + str(request.user))
     user = request.user
+
     expenses = Expenses.objects.filter(users__in=user.expenses.all())
     final_balance = {}
     for expense in expenses:
@@ -53,6 +58,7 @@ def balance(request):
     final_balance = {k: v for k, v in final_balance.items() if v != 0}
 
     response = [{"user": k, "amount": int(v)} for k, v in final_balance.items()]
+    logger.info("time taken for calculate balance : "  + str(int(time.time() * 1000.0) - start))
     return Response(response, status=200)
 
 def normalize_dues(dues):
@@ -91,21 +97,29 @@ def normalize(expense):
 
 
 class user_view_set(ModelViewSet):
+    start = int(time.time() * 1000.0)
+
     """
     this view will make an qurey to obtain all users and serialize it  
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (AllowAny,)
+    logger.info("query for all users, time taken : "+ str(int(time.time() * 1000.0) - start))
+
 
 
 class category_view_set(ModelViewSet):
+    start = int(time.time() * 1000.0)
+
     """
     this view will make an qurey to obtain all category and serialize it  
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     http_method_names = ['get', 'post']
+    logger.info("query for all category, time taken : "+ str(int(time.time() * 1000.0) - start))
+
 
 
 class group_view_set(ModelViewSet):
@@ -113,8 +127,13 @@ class group_view_set(ModelViewSet):
     serializer_class = GroupSerializer
 
     def check_group_exist_get(pk == None) -> "QuerySet[Groups]":
+        logger.info("checking that group exist for pk :" + str(pk))
+        """
+        this function will take an primary key of group class and check if object exist or not if it exist then it will return that object
+        """
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
+            logger.warning("ther is no object of Groups class with pk :" +str(pk))
             raise UnauthorizedUserException()
         return group
 
@@ -132,7 +151,13 @@ class group_view_set(ModelViewSet):
         user = self.request.user
         data = self.request.data
         group = Groups(**data)
-        group.save()
+        try:
+            group.save()
+            logger.info("one group is created ")
+        except:
+            logger.warning("there was an error during saving group" + str(group.name) )
+
+
         group.members.add(user)
         serializer = self.get_serializer(group)
         return Response(serializer.data, status=201)
@@ -143,14 +168,17 @@ class group_view_set(ModelViewSet):
         this function will help to add and remove users from group it will take primary key of group model as argument.
         """
         group = check_group_exist_get(pk)
+        logger.info("adding user : "+str(request.user.pk) + " to group : " + str(group.name))
         body = request.data
         if body.get('add', None) is not None and body['add'].get('user_ids', None) is not None:
             added_ids = body['add']['user_ids']
             for user_id in added_ids:
+                logger.info("adding user : "+str(user_id) + " to group : " + str(group.name))
                 group.members.add(user_id)
         if body.get('remove', None) is not None and body['remove'].get('user_ids', None) is not None:
             removed_ids = body['remove']['user_ids']
             for user_id in removed_ids:
+                logger.info("removing user : "+str(user_id) + " from group : " + str(group.name))
                 group.members.remove(user_id)
         group.save()
         return Response(status=204)
