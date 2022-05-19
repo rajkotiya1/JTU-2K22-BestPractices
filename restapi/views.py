@@ -28,12 +28,16 @@ def index(_request):
 
 @api_view(['POST'])
 def logout(request):
+    """ this function will delete authentication token and return response with HTTP204_no_content  """
+
     request.user.auth_token.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
 def balance(request):
+    """ this function will return final balance of user with HTTP response"""
+
     user = request.user
     expenses = Expenses.objects.filter(users__in=user.expenses.all())
     final_balance = {}
@@ -51,14 +55,7 @@ def balance(request):
     response = [{"user": k, "amount": int(v)} for k, v in final_balance.items()]
     return Response(response, status=200)
 
-
-def normalize(expense):
-    user_balances = expense.users.all()
-    dues = {}
-    for user_balance in user_balances:
-        dues[user_balance.user] = dues.get(user_balance.user, 0) + user_balance.amount_lent \
-                                  - user_balance.amount_owed
-    dues = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
+def normalize_dues(dues):
     start = 0
     end = len(dues) - 1
     balances = []
@@ -75,13 +72,37 @@ def normalize(expense):
     return balances
 
 
+def normalize(expense):
+    """
+    this function will take an expense object as argument  and then it will normalize it
+    first it will calculate dues of each users in the group and then it will sort the dues by amount
+    then it will start normalizing the first and last one from sorted dues and change values in dues dict and add transactions into balance and return it..
+
+    """
+    user_balances = expense.users.all()
+    dues = {}
+    for user_balance in user_balances:
+        dues[user_balance.user] = dues.get(user_balance.user, 0) + user_balance.amount_lent - user_balance.amount_owed
+    dues = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
+    balances = normalize_dues(dues)
+    return balances
+
+
+
+
 class user_view_set(ModelViewSet):
+    """
+    this view will make an qurey to obtain all users and serialize it  
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (AllowAny,)
 
 
 class category_view_set(ModelViewSet):
+    """
+    this view will make an qurey to obtain all category and serialize it  
+    """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     http_method_names = ['get', 'post']
@@ -91,6 +112,12 @@ class group_view_set(ModelViewSet):
     queryset = Groups.objects.all()
     serializer_class = GroupSerializer
 
+    def check_group_exist_get(pk == None) -> "QuerySet[Groups]":
+        group = Groups.objects.get(id=pk)
+        if group not in self.get_queryset():
+            raise UnauthorizedUserException()
+        return group
+
     def get_queryset(self):
         user = self.request.user
         groups = user.members.all()
@@ -99,6 +126,9 @@ class group_view_set(ModelViewSet):
         return groups
 
     def create(self, request, *args, **kwargs):
+        """
+        this function will create an group and add logged user as member of that group
+        """
         user = self.request.user
         data = self.request.data
         group = Groups(**data)
@@ -109,9 +139,10 @@ class group_view_set(ModelViewSet):
 
     @action(methods=['put'], detail=True)
     def members(self, request, pk=None):
-        group = Groups.objects.get(id=pk)
-        if group not in self.get_queryset():
-            raise UnauthorizedUserException()
+        """
+        this function will help to add and remove users from group it will take primary key of group model as argument.
+        """
+        group = check_group_exist_get(pk)
         body = request.data
         if body.get('add', None) is not None and body['add'].get('user_ids', None) is not None:
             added_ids = body['add']['user_ids']
@@ -126,40 +157,25 @@ class group_view_set(ModelViewSet):
 
     @action(methods=['get'], detail=True)
     def expenses(self, _request, pk=None):
-        group = Groups.objects.get(id=pk)
-        if group not in self.get_queryset():
-            raise UnauthorizedUserException()
+        """
+            this function will return all expenses of group and it will take an primary key of group class argument
+        """
+        group = check_group_exist_get(pk)
         expenses = group.expenses_set
         serializer = ExpensesSerializer(expenses, many=True)
         return Response(serializer.data, status=200)
 
     @action(methods=['get'], detail=True)
     def balances(self, _request, pk=None):
-        group = Groups.objects.get(id=pk)
-        if group not in self.get_queryset():
-            raise UnauthorizedUserException()
+        group = check_group_exist_get(pk)
         expenses = Expenses.objects.filter(group=group)
         dues = {}
         for expense in expenses:
             user_balances = UserExpense.objects.filter(expense=expense)
             for user_balance in user_balances:
-                dues[user_balance.user] = dues.get(user_balance.user, 0) + user_balance.amount_lent \
-                                          - user_balance.amount_owed
+                dues[user_balance.user] = dues.get(user_balance.user, 0) + user_balance.amount_lent - user_balance.amount_owed
         dues = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
-        start = 0
-        end = len(dues) - 1
-        balances = []
-        while start < end:
-            amount = min(abs(dues[start][1]), abs(dues[end][1]))
-            amount = Decimal(amount).quantize(Decimal(10)**-2)
-            user_balance = {"from_user": dues[start][0].id, "to_user": dues[end][0].id, "amount": str(amount)}
-            balances.append(user_balance)
-            dues[start] = (dues[start][0], dues[start][1] + amount)
-            dues[end] = (dues[end][0], dues[end][1] - amount)
-            if dues[start][1] == 0:
-                start += 1
-            else:
-                end -= 1
+        balances = normalize_dues(dues)
 
         return Response(balances, status=200)
 
