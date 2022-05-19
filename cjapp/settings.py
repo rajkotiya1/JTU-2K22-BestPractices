@@ -9,9 +9,13 @@ https://docs.djangoproject.com/en/1.11/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
+import environ
+
+env = environ.Env()
+# reading .env file
+environ.Env.read_env()
 
 import os
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '$%g=*x547u*)84y)37pbm(2(4ravpv#o6+h1w@f0-*#552um-e'
+SECRET_KEY = env("secret_key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -61,7 +65,7 @@ REST_FRAMEWORK = {
     ],
     'TEST_REQUEST_DEFAULT_FORMAT': 'json'
 }
-DEFAULT_PORT = "8080"
+DEFAULT_PORT = env("default_port")
 ROOT_URLCONF = 'cjapp.urls'
 
 TEMPLATES = [
@@ -143,9 +147,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = env("LANGUAGE_CODE")
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = env("TIME_ZONE")
 
 USE_I18N = True
 
