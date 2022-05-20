@@ -48,7 +48,7 @@ class ExpensesSerializer(ModelSerializer):
     def create(self, validated_data):
         expense_users = validated_data.pop('users')
         expense = Expenses.objects.create(**validated_data)
-        logger.info("an expense is creted")
+        logger.info("an expense is created by user :" +str(validated_data.user))
         for eu in expense_users:
             UserExpense.objects.create(expense=expense, **eu)
         return expense
@@ -70,12 +70,11 @@ class ExpensesSerializer(ModelSerializer):
                     for user_expense in user_expenses
                 ],
             )
-        try:
-            instance.save()
-            logger.info("expense is updated successfully")
+        
+        instance.save()
+        logger.info("expense is updated successfully")
 
-        except:
-            logger.error("there is an error while updating expense :"+ str(instance.pk) )
+        
 
         return instance
 
