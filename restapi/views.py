@@ -6,7 +6,7 @@ import numpy as np
 import urllib.request
 from datetime import datetime
 from logging import info, error,getLogger,warning
-basicConfig(filename='logfile2.log',level = DEBUG , style= '{', format = "{name} || {asctime} || {message}")
+basicConfig(filename='logfile2.log',level = DEBUG , style= '{', format = "{name} {asctime} {message}")
 logger = getLogger(__name__)
 from django.http import HttpResponse
 from django.contrib.auth.models import User
@@ -225,13 +225,18 @@ class expenses_view_set(ModelViewSet):
 @authentication_classes([])
 @permission_classes([])
 def logProcessor(request):
+    """
+    this function will proccess the logs
+    """
     data = request.data
     num_threads = data['parallelFileProcessingCount']
     log_files = data['logFiles']
     if num_threads <= 0 or num_threads > 30:
+        logger.warning("Parallel Processing Count out of expected bounds ")
         return Response({"status": "failure", "reason": "Parallel Processing Count out of expected bounds"},
                         status=status.HTTP_400_BAD_REQUEST)
     if len(log_files) == 0:
+        logger.warning("No log files provided in request")
         return Response({"status": "failure", "reason": "No log files provided in request"},
                         status=status.HTTP_400_BAD_REQUEST)
     logs = multiThreadedReader(urls=data['logFiles'], num_threads=data['parallelFileProcessingCount'])
@@ -242,6 +247,9 @@ def logProcessor(request):
     return Response({"response":response}, status=status.HTTP_200_OK)
 
 def sort_by_time_stamp(logs):
+    """
+    this function will take logs as input and sort logs by time and return it as list
+    """
     data = []
     for log in logs:
         data.append(log.split(" "))
@@ -250,6 +258,9 @@ def sort_by_time_stamp(logs):
     return data
 
 def response_format(raw_data):
+    """
+    this function will take raw data of log as input and tell us how many times a exception is occurred and return it as list 
+    """
     response = []
     for timestamp, data in raw_data.items():
         entry = {'timestamp': timestamp}
@@ -262,6 +273,10 @@ def response_format(raw_data):
     return response
 
 def aggregate(cleaned_logs):
+    """
+    this function will aggregate all logs in a same interval and retunr it as dict whose value will also an dict which tell us
+    count of that log in that interval formate : data[interval][log] = count
+    """
     data = {}
     for log in cleaned_logs:
         [key, text] = log
@@ -272,6 +287,9 @@ def aggregate(cleaned_logs):
 
 
 def transform(logs):
+    """
+    this function take logs as input and group them into 15 min intervals and return it as [[key,text]](nested list)
+    """
     result = []
     for log in logs:
         [_, timestamp, text] = log
