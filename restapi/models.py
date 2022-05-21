@@ -7,7 +7,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
-class Category(models.Model):
+class CATEGORY(models.Model):   #UPPER_SNAKE_CASE for class or application constants
     name = models.CharField(max_length=200, null=False)
 
 
@@ -20,7 +20,7 @@ class Expenses(models.Model):
     description = models.CharField(max_length=200)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     group = models.ForeignKey(Groups, null=True, on_delete=models.CASCADE)
-    category = models.ForeignKey(Category, default=1, on_delete=models.CASCADE)
+    category = models.ForeignKey(CATEGORY, default=1, on_delete=models.CASCADE)
 
 
 class UserExpense(models.Model):
