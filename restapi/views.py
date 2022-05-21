@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from decimal import Decimal
-import pandas as pd
-import numpy as np
+# import pandas as pd
+# import numpy as np not used in code
 import urllib.request
 from datetime import datetime
-from logging import info, error,getLogger,warning
-basicConfig(filename='logfile2.log',level = DEBUG , style= '{', format = "{name} {asctime} {message}")
-logger = getLogger(__name__)
+import logging
+
+env = environ.Env()
+environ.Env.read_env()
+from cjapp.settings import logger_factory
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 
 # Create your views here.
 from rest_framework.permissions import AllowAny
-from rest_framework.decorators import *
+# from rest_framework.decorators import *
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status
@@ -22,9 +24,22 @@ from restapi.models import *
 from restapi.serializers import *
 from restapi.custom_exception import *
 
+file_name = "logfile2.log"
+logs = logger_factory()
+logger = logs.create(file_name,logging.DEBUG)
 
 
-def index(_request):
+def Calculate_time(fnc):
+    def inner(*args,**kwargs):
+        start = int(time.time() * 1000.0)
+        result = fnc(*args,**kwargs)  
+        logger.info('Function'+ str(func.__name__) + 'time:'+ str(int(time.time() * 1000.0) - start))
+        return result
+    return inner
+
+
+
+def Index(_request):
     return HttpResponse("Hello, world. You're at Rest.")
 
 
@@ -38,9 +53,10 @@ def logout(request):
 
 
 @api_view(['GET'])
+@Calculate_time
 def balance(request):
     """ this function will return final balance of user with HTTP response"""
-    start = int(time.time() * 1000.0)
+    # start = int(time.time() * 1000.0)
     logger.info("calculating balance of user:" + str(request.user))
     user = request.user
 
@@ -58,8 +74,8 @@ def balance(request):
     final_balance = {k: v for k, v in final_balance.items() if v != 0}
 
     response = [{"user": k, "amount": int(v)} for k, v in final_balance.items()]
-    logger.info("time taken for calculate balance : "  + str(int(time.time() * 1000.0) - start))
-    return Response(response, status=200)
+    # logger.info("time taken for calculate balance : "  + str(int(time.time() * 1000.0) - start))
+    return Response(response, status=)env("HTTP_status_200")
 
 def normalize_dues(dues):
     start = 0
@@ -97,7 +113,6 @@ def normalize(expense):
 
 
 class user_view_set(ModelViewSet):
-    start = int(time.time() * 1000.0)
 
     """
     this view will make an qurey to obtain all users and serialize it  
@@ -105,7 +120,6 @@ class user_view_set(ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (AllowAny,)
-    logger.info("query for all users, time taken : "+ str(int(time.time() * 1000.0) - start))
 
 
 
@@ -113,9 +127,9 @@ class category_view_set(ModelViewSet):
     start = int(time.time() * 1000.0)
 
     """
-    this view will make an qurey to obtain all category and serialize it  
+    this view will make an qurey to obtain all CATEGORY and serialize it  
     """
-    queryset = Category.objects.all()
+    queryset = CATEGORY.objects.all()
     serializer_class = CategorySerializer
     http_method_names = ['get', 'post']
     logger.info("query for all category, time taken : "+ str(int(time.time() * 1000.0) - start))
@@ -144,6 +158,7 @@ class group_view_set(ModelViewSet):
             groups = groups.filter(name__icontains=self.request.query_params.get('q', None))
         return groups
 
+    @Calculate_time
     def create(self, request, *args, **kwargs):
         """
         this function will create an group and add logged user as member of that group
@@ -160,7 +175,7 @@ class group_view_set(ModelViewSet):
 
         group.members.add(user)
         serializer = self.get_serializer(group)
-        return Response(serializer.data, status=201)
+        return Response(serializer.data, status=status.HTTP_201_OK)
 
     @action(methods=['put'], detail=True)
     def members(self, request, pk=None):
@@ -181,7 +196,7 @@ class group_view_set(ModelViewSet):
                 logger.info("removing user : "+str(user_id) + " from group : " + str(group.name))
                 group.members.remove(user_id)
         group.save()
-        return Response(status=204)
+        return Response(status=status=status.HTTP_204_OK)
 
     @action(methods=['get'], detail=True)
     def expenses(self, _request, pk=None):
@@ -191,10 +206,11 @@ class group_view_set(ModelViewSet):
         group = check_group_exist_get(pk)
         expenses = group.expenses_set
         serializer = ExpensesSerializer(expenses, many=True)
-        return Response(serializer.data, status=200)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], detail=True)
-    def balances(self, _request, pk=None):
+    @Calculate_time
+    def calculate_balances(self, _request, pk=None):
         group = check_group_exist_get(pk)
         expenses = Expenses.objects.filter(group=group)
         dues = {}
@@ -205,7 +221,7 @@ class group_view_set(ModelViewSet):
         dues = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
         balances = normalize_dues(dues)
 
-        return Response(balances, status=200)
+        return Response(balances, status=status.HTTP_200_OK)
 
 
 class expenses_view_set(ModelViewSet):
@@ -224,7 +240,8 @@ class expenses_view_set(ModelViewSet):
 @api_view(['post'])
 @authentication_classes([])
 @permission_classes([])
-def logProcessor(request):
+@Calculate_time
+def log_Processor(request):
     """
     this function will proccess the logs
     """
@@ -246,7 +263,8 @@ def logProcessor(request):
     response = response_format(data)
     return Response({"response":response}, status=status.HTTP_200_OK)
 
-def sort_by_time_stamp(logs):
+@Calculate_time
+def sort_by_time_stamp(logs)->list:
     """
     this function will take logs as input and sort logs by time and return it as list
     """
@@ -257,7 +275,8 @@ def sort_by_time_stamp(logs):
     data = sorted(data, key=lambda elem: elem[1])
     return data
 
-def response_format(raw_data):
+@Calculate_time
+def response_format(raw_data)->list:
     """
     this function will take raw data of log as input and tell us how many times a exception is occurred and return it as list 
     """
@@ -272,7 +291,7 @@ def response_format(raw_data):
         response.append(entry)
     return response
 
-def aggregate(cleaned_logs):
+def aggregate_logs_interval(cleaned_logs)->dict:
     """
     this function will aggregate all logs in a same interval and retunr it as dict whose value will also an dict which tell us
     count of that log in that interval formate : data[interval][log] = count
@@ -286,7 +305,7 @@ def aggregate(cleaned_logs):
     return data
 
 
-def transform(logs):
+def transform_into_intervals(logs)->list:
     """
     this function take logs as input and group them into 15 min intervals and return it as [[key,text]](nested list)
     """
@@ -316,12 +335,12 @@ def transform(logs):
     return result
 
 
-def reader(url, timeout):
+def reade_from_url(url, timeout):
     with urllib.request.urlopen(url, timeout=timeout) as conn:
         return conn.read()
 
-
-def multiThreadedReader(urls, num_threads):
+@Calculate_time
+def multiThreadedReader(urls, num_threads)->list:
     """
         Read multiple files through HTTP
     """
