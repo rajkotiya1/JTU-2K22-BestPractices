@@ -166,11 +166,10 @@ class GROUP_VIEW_SET(ModelViewSet):
         user = self.request.user
         data = self.request.data
         group = Groups(**data)
-        try:
-            group.save()
-            logger.info("one group is created ")
-        except:
-            logger.warning("there was an error during saving group" + str(group.name) )
+        group.save()
+        logger.info("one group is created by user" + str(request.user))
+        # except:
+        #     logger.warning("there was an error during saving group" + str(group.name) )
 
 
         group.members.add(user)
