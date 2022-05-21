@@ -62,7 +62,6 @@ class ExpensesSerializer(ModelSerializer):
         instance.group = validated_data.get('group', None)
         instance.total_amount = validated_data['total_amount']
 
-        logger.info("expense is updated successfully")
 
         if user_expenses:
             instance.users.all().delete()
