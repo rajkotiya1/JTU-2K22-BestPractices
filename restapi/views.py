@@ -20,16 +20,16 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status
 
-from restapi.models import *
-from restapi.serializers import *
-from restapi.custom_exception import *
+from restapi.models import CATEGORY,Groups,Expenses,UserExpense
+from restapi.serializers import UserSerializer,CategorySerializer,GroupSerializer,UserExpenseSerializer,ExpensesSerializer
+from restapi.custom_exception import UnauthorizedUserException
 
 file_name = "logfile2.log"
 logs = logger_factory()
 logger = logs.create(file_name,logging.DEBUG)
 
 
-def Calculate_time(fnc):
+def calculate_time(fnc):
     def inner(*args,**kwargs):
         start = int(time.time() * 1000.0)
         result = fnc(*args,**kwargs)  
@@ -123,7 +123,7 @@ class user_view_set(ModelViewSet):
 
 
 
-class CATEGORY_VIEW_SET(ModelViewSet):
+class Category_View_Set(ModelViewSet):
     start = int(time.time() * 1000.0)
 
     """
