@@ -123,7 +123,7 @@ class user_view_set(ModelViewSet):
 
 
 
-class category_view_set(ModelViewSet):
+class CATEGORY_VIEW_SET(ModelViewSet):
     start = int(time.time() * 1000.0)
 
     """
@@ -136,7 +136,7 @@ class category_view_set(ModelViewSet):
 
 
 
-class group_view_set(ModelViewSet):
+class GROUP_VIEW_SET(ModelViewSet):
     queryset = Groups.objects.all()
     serializer_class = GroupSerializer
 
@@ -224,7 +224,7 @@ class group_view_set(ModelViewSet):
         return Response(balances, status=status.HTTP_200_OK)
 
 
-class expenses_view_set(ModelViewSet):
+class EXPENSES_VIEW_SET(ModelViewSet):
     queryset = Expenses.objects.all()
     serializer_class = ExpensesSerializer
 
