@@ -39,7 +39,7 @@ def Calculate_time(fnc):
 
 
 
-def Index(_request):
+def index(_request):
     return HttpResponse("Hello, world. You're at Rest.")
 
 
@@ -335,7 +335,7 @@ def transform_into_intervals(logs)->list:
     return result
 
 
-def reade_from_url(url, timeout):
+def read_from_url(url, timeout):
     with urllib.request.urlopen(url, timeout=timeout) as conn:
         return conn.read()
 
@@ -345,9 +345,19 @@ def multiThreadedReader(urls, num_threads)->list:
         Read multiple files through HTTP
     """
     result = []
-    for url in urls:
-        data = reader(url, 60)
-        data = data.decode('utf-8')
-        result.extend(data.split("\n"))
+    if num_threads > 15: # i/o intensive work load assuming task's runtime is very small compared  to i/o time
+        with ThreadPoolExecutor(max_workers = 7) as executor:
+            futures = {executor.submit(read_from_url,url,60) : url for url in urls}
+            for future in concurrent.futures.as_completed(futures):
+                data = futures[future]
+                data = data.decode('utf-8')
+                result.extend(data.split("\n"))
+    else:
+        for url in urls:
+            data = read_from_url(url, 60)
+            data = data.decode('utf-8')
+            result.extend(data.split("\n"))
+
     result = sorted(result, key=lambda elem:elem[1])
     return result
+
