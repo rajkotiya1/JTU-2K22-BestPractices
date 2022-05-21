@@ -29,6 +29,18 @@ SECRET_KEY = env("secret_key")
 DEBUG = True
 
 # Application definition
+from logging import getLogger
+
+class Logger_Factory(self):
+
+
+    def create(self,file_name,Level)
+
+        basicConfig(filename=file_name,level = Level , style= '{', format = "{name} {asctime} {message}")
+        logger = getLogger(__name__)
+
+        return logger
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
