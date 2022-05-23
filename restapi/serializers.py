@@ -7,7 +7,7 @@ from cjapp.settings import logger_factory
 file_name = "logfile2.log"
 logs = logger_factory()
 logger = logs.create(file_name,logging.DEBUG)
-from restapi.models import CATEGORY, Groups, UserExpense, Expenses
+from restapi.models import Category, Groups, UserExpense, Expenses
 
 
 class UserSerializer(ModelSerializer):
@@ -26,7 +26,7 @@ class UserSerializer(ModelSerializer):
 
 class CategorySerializer(ModelSerializer):
     class Meta(object):
-        model = CATEGORY
+        model = Category
         fields = '__all__'
 
 
